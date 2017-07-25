@@ -1,37 +1,50 @@
-#!/bin/bash
-
-# 3 ways to obtain name of a Git branch
-# git rev-parse --abbrev-ref HEAD 2>/dev/null
-# git symbolic-ref --short HEAD 2>/dev/null
-# git branch 2>/dev/null | sed -n '/\* /s///p'
-
-parse_git_branch () {
-  branch1=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-  branch2=$(git symbolic-ref --short HEAD 2>/dev/null)
-  [[ $branch1 == $branch2 ]] && { echo $branch1; return 0; }
-  [[ $branch1 == "HEAD" && -n $branch2 ]] && { echo "new repository | $branch2"; return 0; }
-
-  branch3=$(git branch 2>/dev/null | sed -n '/\* /s///p')
-  [[ $? == 0 ]] && {
-    [[ $branch3 =~ "(HEAD detached at" ]] && echo "${branch3:1:${#branch3}-2}" || echo $branch3
-    return 0;
-  }
-
-  echo "Could not determine Git branch" >&2
-  return 1
-  # echo "|$branch1|$branch2|$branch3|"
-}
+#!/usr/bin/env bash
+#
+# NAME
+#        PS1 - Set (and export) PS1 environment variable
+#
+# SYNOPSIS
+#        source PS1
+#
+# DESCRIPTION
+#        Set PS1 Bash environment variable to:
+#
+#        [user_name@computer_name] [Weekday Month DD HH:MM:SS] [Last Exit Code: Num] [bg Nr| Ms]
+#        ~/current/path
+#        (git-branch-name) $
+#
+#        'Last Exit Code' shows the exit code of the last executed command.
+#        If the exit code was zero, the field is skipped.
+#
+#        'bg' shows the number of jobs in the background:
+#           Nr - N running backgrounded jobs
+#           Ms - M stopped backgrounded jobs
+#
+# BUGS, FEATURE REQUESTS
+#        https://github.com/maxim-belkin/dotfiles/issues
+#
+# BUG FIXES
+#        https://github.com/maxim-belkin/dotfiles/pulls
+#
+# COPYRIGHT
+#        Copyright © 2016-2017 Maxim Belkin. License GPLv3+: GNU GPL
+#        version 3 or later <http://gnu.org/licenses/gpl.html>.
+#        This is free software: you are free to change and redistribute it.
+#        There is NO WARRANTY, to the extent permitted by law.
+#
+################################################################################
 
 PS1=""
 PS1="$PS1\n"
 PS1="$PS1\[\e[32m\][\u@\h]\[\e[0m\]"
 PS1="$PS1 \[\e[33m\][\d \t]\[\e[0m\]"
-PS1="$PS1"'$(exit_code=$?; (( exit_code == 0 )) || printf " %s" \[\e[36m\][Last Exit Code: $exit_code]\[\e[0m\]""; )'
-PS1="$PS1"'$(stopped=$(jobs -sp | wc -l); running=$(jobs -rp | wc -l); ((running+stopped)) && { printf " %s" \[\e[35m\][bg ${running}r\|${stopped}s] \[\e[0m\] ""; } )'
+PS1="$PS1"'$(exit_code=$?; (( exit_code == 0 )) || printf " %s" \[\e[36m\][Last Exit Code: $exit_code]\[\e[0m\]"";)'
+PS1="$PS1"'$(stopped=$(jobs -sp | wc -l); running=$(jobs -rp | wc -l); ((running+stopped)) && { printf " %s" \[\e[35m\][bg ${running}r\|${stopped}s] \[\e[0m\] "";})'
 PS1="$PS1\n"
 PS1="$PS1\[\e[1;34m\]\w\[\e[0m\]"
 PS1="$PS1\n"
-PS1="$PS1"'$(branch=$(parse_git_branch); [[ -n "$branch" ]] && { printf "%s " \[\e[35m\]\($branch\)\[\e[0m\]""; } )'
+[[ $(declare -F __git_branch_name_bash) ]] || source git_branch_name_bash.sh 2>/dev/null
+[[ $(declare -F __git_branch_name_bash) ]] && PS1="$PS1"'$(branch=$(__git_branch_name_bash); [[ -n "$branch" ]] && { printf "%s " \[\e[35m\]\($branch\)\[\e[0m\]"";})'
 PS1="$PS1\$ "
 
 export PS1
